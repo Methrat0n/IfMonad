@@ -1,5 +1,7 @@
 package io.github.methrat0n.ifMonad
 
+import scala.util.Try
+
 sealed trait IfElse[+If, +Else] {
   def isIf: Boolean
   def isElse: Boolean
@@ -9,6 +11,7 @@ sealed trait IfElse[+If, +Else] {
   def elseFlatMap[A, B](mapper: Else => IfElse[A, B]): IfElse[A, B]
   def foreach[U](iterater: If => U): Unit
   def elseForeach[U](iterater: Else => U): Unit
+  def toEither: Either[If, Else]
 }
 
 object IfElse {
@@ -23,6 +26,7 @@ object IfElse {
     override def elseFlatMap[C, B](mapper: Nothing => IfElse[C, B]): IfElse[C, B] = this.asInstanceOf[IfElse[C, B]]
     override def foreach[U](iterater: A => U): Unit = iterater(block)
     override def elseForeach[U](iterater: Nothing => U): Unit = ()
+    override def toEither: Either[A, Nothing] = Left(block)
   }
 
   final class Else[A](block: => Option[A]) extends IfElse[Nothing, A] {
@@ -34,6 +38,7 @@ object IfElse {
     override def elseFlatMap[C, B](mapper: A => IfElse[C, B]): IfElse[C, B] = block.map(mapper).getOrElse(Else(None).asInstanceOf[IfElse[C, B]])
     override def foreach[U](iterater: Nothing => U): Unit = ()
     override def elseForeach[U](iterater: A => U): Unit = block.map(iterater).getOrElse(())
+    override def toEither: Either[Nothing, A] = Try(block.get).toEither.asInstanceOf[Either[Nothing, A]]
   }
 
   object If {
